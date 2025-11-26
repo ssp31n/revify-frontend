@@ -3,6 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import { sessionsApi, Session } from "@/lib/sessionsApi";
 import { Loader2, ArrowLeft, Calendar, User } from "lucide-react";
 import UploadPanel from "@/components/UploadPanel";
+import FileTree from "@/components/FileTree";
+import CodeViewer from "@/components/CodeViewer";
 import { useAuth } from "@/context/AuthContext";
 
 const SessionDetailPage = () => {
@@ -11,6 +13,9 @@ const SessionDetailPage = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 선택된 파일 상태 관리
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) fetchSession(id);
@@ -29,73 +34,52 @@ const SessionDetailPage = () => {
     }
   };
 
-  // 업로드 완료 후 세션 정보를 다시 불러와 상태(ready) 갱신
   const handleUploadComplete = () => {
     if (id) fetchSession(id);
   };
 
-  if (loading) {
+  if (loading)
     return (
       <div className="flex justify-center items-center h-[50vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
-  }
-
-  if (error || !session) {
+  if (error || !session)
     return (
-      <div className="flex flex-col items-center justify-center h-[50vh] gap-4">
-        <h2 className="text-2xl font-bold">Error</h2>
-        <p className="text-muted-foreground">{error || "Session not found"}</p>
-        <Link
-          to="/sessions"
-          className="text-primary hover:underline flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Sessions
-        </Link>
+      <div className="p-8 text-center text-destructive">
+        {error || "Session not found"}
       </div>
     );
-  }
 
   const isOwner = user?._id === session.owner._id;
+  const isReady = session.status === "ready";
 
   return (
-    <div className="space-y-6">
-      {/* 상단 네비게이션 */}
-      <div>
-        <Link
-          to="/sessions"
-          className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1 mb-2"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to List
-        </Link>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">
-              {session.title}
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              {session.description || "No description provided."}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium border ${
-                session.status === "ready"
-                  ? "bg-green-100 text-green-700 border-green-200"
-                  : session.status === "error"
-                  ? "bg-red-100 text-red-700 border-red-200"
-                  : "bg-secondary text-secondary-foreground"
-              }`}
-            >
-              {session.status.toUpperCase()}
-            </span>
-          </div>
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
+      {" "}
+      {/* 전체 높이 사용 */}
+      <div className="p-4 border-b shrink-0">
+        <div className="flex items-center justify-between mb-2">
+          <Link
+            to="/sessions"
+            className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </Link>
+          <span
+            className={`px-2 py-0.5 rounded text-xs font-bold border ${
+              session.status === "ready"
+                ? "bg-green-100 text-green-700 border-green-200"
+                : "bg-secondary text-secondary-foreground"
+            }`}
+          >
+            {session.status.toUpperCase()}
+          </span>
         </div>
+        <h1 className="text-xl font-bold truncate">{session.title}</h1>
       </div>
-
       {/* 메타 정보 */}
-      <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
+      <div className="flex flex-wrap gap-6 text-sm text-muted-foreground px-4 mb-4">
         <div className="flex items-center gap-2">
           <User className="h-4 w-4" />
           <span>
@@ -112,39 +96,50 @@ const SessionDetailPage = () => {
           </span>
         </div>
       </div>
+      {/* 메인 컨텐츠 영역 */}
+      <div className="flex-1 overflow-hidden flex">
+        {isReady ? (
+          <>
+            {/* 왼쪽 사이드바: 파일 트리 */}
+            <div className="w-64 border-r bg-muted/10 shrink-0 flex flex-col">
+              <div className="p-3 border-b text-xs font-semibold text-muted-foreground">
+                FILES
+              </div>
+              <FileTree
+                sessionId={session._id}
+                onFileSelect={setSelectedFile}
+                selectedPath={selectedFile}
+              />
+            </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-        {/* 메인 영역 (추후 파일 트리/코드 뷰어) */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="border rounded-lg h-96 flex items-center justify-center bg-muted/20 text-muted-foreground p-8 text-center">
-            {session.status === "ready" ? (
-              <div>
-                <p className="text-lg font-medium mb-2">
-                  Code is ready for review!
-                </p>
-                <p className="text-sm">
-                  (File Tree & Code Viewer will be implemented in the next step)
+            {/* 중앙: 코드 뷰어 */}
+            <div className="flex-1 bg-background overflow-hidden">
+              <CodeViewer sessionId={session._id} filePath={selectedFile} />
+            </div>
+          </>
+        ) : (
+          // 준비되지 않았을 때 (업로드 전/중)
+          <div className="flex-1 p-8 overflow-y-auto">
+            <div className="max-w-2xl mx-auto">
+              <div className="mb-8 text-center">
+                <h2 className="text-2xl font-bold mb-2">Setup Session</h2>
+                <p className="text-muted-foreground">
+                  Upload your source code (ZIP) to start reviewing.
                 </p>
               </div>
-            ) : (
-              <p>No code uploaded yet, or processing is in progress.</p>
-            )}
-          </div>
-        </div>
-
-        {/* 사이드 패널 (업로드) */}
-        <div className="space-y-6">
-          {isOwner ? (
-            <UploadPanel
-              sessionId={session._id}
-              onUploadComplete={handleUploadComplete}
-            />
-          ) : (
-            <div className="border rounded-lg p-6 bg-muted/50 text-center text-sm text-muted-foreground">
-              Only the owner can upload files.
+              {isOwner ? (
+                <UploadPanel
+                  sessionId={session._id}
+                  onUploadComplete={handleUploadComplete}
+                />
+              ) : (
+                <div className="text-center text-muted-foreground">
+                  Waiting for owner to upload code...
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

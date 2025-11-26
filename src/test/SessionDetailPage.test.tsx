@@ -9,6 +9,8 @@ vi.mock("@/lib/sessionsApi", () => ({
   sessionsApi: {
     getSessionById: vi.fn(),
     uploadFile: vi.fn(),
+    getFileTree: vi.fn(),
+    getFileContent: vi.fn(),
   },
 }));
 
@@ -25,17 +27,24 @@ describe("SessionDetailPage Integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // EventSource Mock 구현
+    // 1. Mock 객체 정의
     mockEventSource = {
       onmessage: null,
       addEventListener: vi.fn(),
       close: vi.fn(),
     };
-    global.EventSource = vi.fn(() => mockEventSource) as any;
+
+    // 2. [수정됨] 화살표 함수 대신 일반 함수를 사용해야 'new'로 호출 가능
+    vi.stubGlobal(
+      "EventSource",
+      vi.fn(function () {
+        return mockEventSource;
+      })
+    );
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("renders session info and uploads file with progress", async () => {
@@ -61,46 +70,49 @@ describe("SessionDetailPage Integration", () => {
       </MemoryRouter>
     );
 
-    // 1. 세션 정보 로드 확인
     await waitFor(() => {
       expect(screen.getByText("Detail Session")).toBeInTheDocument();
     });
 
-    // 2. 파일 선택
     const file = new File(["dummy"], "test.zip", { type: "application/zip" });
-
-    // hidden input 찾기
     const fileInput = document.querySelector(
       'input[type="file"]'
     ) as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [file] } });
 
-    // 3. 업로드 시작
     const uploadBtn = screen.getByRole("button", { name: /Start Upload/i });
     fireEvent.click(uploadBtn);
 
-    // 4. API 호출 확인
+    // API 호출 확인
     await waitFor(() => {
       expect(sessionsApi.uploadFile).toHaveBeenCalled();
     });
 
-    // 5. SSE 연결 확인
-    expect(global.EventSource).toHaveBeenCalledWith(
+    // EventSource 생성 확인
+    expect(EventSource).toHaveBeenCalledWith(
       expect.stringContaining("/sessions/123/uploads/upload_abc/events"),
       expect.anything()
     );
 
-    // 6. SSE 이벤트 시뮬레이션 (Progress)
-    // addEventListener의 두 번째 인자인 콜백 함수를 찾아서 호출
-    const progressCallback = mockEventSource.addEventListener.mock.calls.find(
+    // 리스너 등록 대기
+    await waitFor(() => {
+      expect(mockEventSource.addEventListener).toHaveBeenCalledWith(
+        "progress",
+        expect.any(Function)
+      );
+    });
+
+    // 진행 이벤트 시뮬레이션
+    const progressCall = mockEventSource.addEventListener.mock.calls.find(
       (call: any[]) => call[0] === "progress"
-    )[1];
+    );
+    const progressCallback = progressCall[1];
 
     progressCallback({
       data: JSON.stringify({ percent: 50, message: "Halfway there" }),
     } as MessageEvent);
 
-    // 7. UI 갱신 확인
+    // UI 갱신 확인
     await waitFor(() => {
       expect(screen.getByText("50%")).toBeInTheDocument();
       expect(screen.getByText("Halfway there")).toBeInTheDocument();

@@ -3,6 +3,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import Layout from "@/components/Layout";
 import HomePage from "@/pages/HomePage";
 import SessionsPage from "@/pages/SessionsPage";
+import SessionDetailPage from "@/pages/SessionDetailPage"; // 추가
 import NotFoundPage from "@/pages/NotFoundPage";
 
 function App() {
@@ -13,6 +14,8 @@ function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="sessions" element={<SessionsPage />} />
+            <Route path="sessions/:id" element={<SessionDetailPage />} />{" "}
+            {/* 추가 */}
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>

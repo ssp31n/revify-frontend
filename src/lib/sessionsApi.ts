@@ -1,5 +1,7 @@
 import apiClient from "./apiClient";
 
+// ... 기존 인터페이스 (Session, FileNode, CreateSessionData) 유지 ...
+
 export interface Session {
   _id: string;
   owner: {
@@ -30,26 +32,42 @@ export interface CreateSessionData {
   commentPermission: "owner" | "invited" | "everyone";
 }
 
+// --- 추가된 인터페이스 ---
+export interface Comment {
+  _id: string;
+  session: string;
+  author: {
+    _id: string;
+    displayName: string;
+    avatarUrl?: string;
+  };
+  filePath: string;
+  startLine: number;
+  endLine: number;
+  content: string;
+  resolved: boolean;
+  parentComment: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const sessionsApi = {
+  // ... 기존 메서드들 유지 ...
   getSessions: async (): Promise<Session[]> => {
     const response = await apiClient.get("/sessions");
     return response.data.data;
   },
-
   createSession: async (data: CreateSessionData): Promise<Session> => {
     const response = await apiClient.post("/sessions", data);
     return response.data.data;
   },
-
   deleteSession: async (id: string): Promise<void> => {
     await apiClient.delete(`/sessions/${id}`);
   },
-
   getSessionById: async (id: string): Promise<Session> => {
     const response = await apiClient.get(`/sessions/${id}`);
     return response.data.data;
   },
-
   uploadFile: async (
     sessionId: string,
     file: File
@@ -60,21 +78,15 @@ export const sessionsApi = {
       `/sessions/${sessionId}/uploads`,
       formData,
       {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": undefined }, // 브라우저 자동 설정
       }
     );
     return response.data.data;
   },
-
-  // --- 추가된 부분 ---
-
-  // 파일 트리 조회
   getFileTree: async (sessionId: string): Promise<FileNode[]> => {
     const response = await apiClient.get(`/sessions/${sessionId}/tree`);
     return response.data.data;
   },
-
-  // 파일 내용 조회
   getFileContent: async (
     sessionId: string,
     filePath: string
@@ -83,5 +95,40 @@ export const sessionsApi = {
       params: { path: filePath },
     });
     return response.data.data.content;
+  },
+
+  // --- 코멘트 관련 메서드 추가 ---
+  getComments: async (sessionId: string): Promise<Comment[]> => {
+    const response = await apiClient.get(`/sessions/${sessionId}/comments`);
+    return response.data.data;
+  },
+
+  createComment: async (
+    sessionId: string,
+    data: {
+      filePath: string;
+      startLine: number;
+      endLine: number;
+      content: string;
+      parentComment?: string;
+    }
+  ): Promise<Comment> => {
+    const response = await apiClient.post(
+      `/sessions/${sessionId}/comments`,
+      data
+    );
+    return response.data.data;
+  },
+
+  updateComment: async (
+    sessionId: string,
+    commentId: string,
+    data: { content?: string; resolved?: boolean }
+  ): Promise<Comment> => {
+    const response = await apiClient.patch(
+      `/sessions/${sessionId}/comments/${commentId}`,
+      data
+    );
+    return response.data.data;
   },
 };

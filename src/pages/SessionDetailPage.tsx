@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { sessionsApi, Session } from "@/lib/sessionsApi";
-import { Loader2, ArrowLeft, Calendar, User } from "lucide-react";
+import { sessionsApi, Session, Comment } from "@/lib/sessionsApi";
+import { Loader2, ArrowLeft } from "lucide-react";
 import UploadPanel from "@/components/UploadPanel";
 import FileTree from "@/components/FileTree";
 import CodeViewer from "@/components/CodeViewer";
+import CommentPanel from "@/components/CommentPanel";
 import { useAuth } from "@/context/AuthContext";
 
 const SessionDetailPage = () => {
@@ -14,11 +15,16 @@ const SessionDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 선택된 파일 상태 관리
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [activeLine, setActiveLine] = useState<number | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
 
+  // 초기 로드
   useEffect(() => {
-    if (id) fetchSession(id);
+    if (id) {
+      fetchSession(id);
+      fetchComments(id);
+    }
   }, [id]);
 
   const fetchSession = async (sessionId: string) => {
@@ -34,9 +40,23 @@ const SessionDetailPage = () => {
     }
   };
 
+  const fetchComments = async (sessionId: string) => {
+    try {
+      const data = await sessionsApi.getComments(sessionId);
+      setComments(data);
+    } catch (err) {
+      console.error("Failed to load comments", err);
+    }
+  };
+
   const handleUploadComplete = () => {
     if (id) fetchSession(id);
   };
+
+  // 코드 뷰어에서 라인 클릭 시 호출
+  const handleLineSelect = useCallback((line: number) => {
+    setActiveLine(line);
+  }, []);
 
   if (loading)
     return (
@@ -56,9 +76,7 @@ const SessionDetailPage = () => {
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
-      {" "}
-      {/* 전체 높이 사용 */}
-      <div className="p-4 border-b shrink-0">
+      <div className="p-4 border-b shrink-0 bg-background z-10">
         <div className="flex items-center justify-between mb-2">
           <Link
             to="/sessions"
@@ -78,47 +96,45 @@ const SessionDetailPage = () => {
         </div>
         <h1 className="text-xl font-bold truncate">{session.title}</h1>
       </div>
-      {/* 메타 정보 */}
-      <div className="flex flex-wrap gap-6 text-sm text-muted-foreground px-4 mb-4">
-        <div className="flex items-center gap-2">
-          <User className="h-4 w-4" />
-          <span>
-            Owner:{" "}
-            <span className="font-medium text-foreground">
-              {session.owner.displayName}
-            </span>
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
-          <span>
-            Created: {new Date(session.createdAt).toLocaleDateString()}
-          </span>
-        </div>
-      </div>
-      {/* 메인 컨텐츠 영역 */}
+
       <div className="flex-1 overflow-hidden flex">
         {isReady ? (
           <>
-            {/* 왼쪽 사이드바: 파일 트리 */}
+            {/* 1. 파일 트리 */}
             <div className="w-64 border-r bg-muted/10 shrink-0 flex flex-col">
               <div className="p-3 border-b text-xs font-semibold text-muted-foreground">
                 FILES
               </div>
               <FileTree
                 sessionId={session._id}
-                onFileSelect={setSelectedFile}
+                onFileSelect={(path) => {
+                  setSelectedFile(path);
+                  setActiveLine(null); // 파일 변경 시 라인 선택 초기화
+                }}
                 selectedPath={selectedFile}
               />
             </div>
 
-            {/* 중앙: 코드 뷰어 */}
-            <div className="flex-1 bg-background overflow-hidden">
-              <CodeViewer sessionId={session._id} filePath={selectedFile} />
+            {/* 2. 코드 뷰어 */}
+            <div className="flex-1 bg-background overflow-hidden min-w-0">
+              <CodeViewer
+                sessionId={session._id}
+                filePath={selectedFile}
+                onLineSelect={handleLineSelect}
+                comments={comments.filter((c) => c.filePath === selectedFile)}
+              />
             </div>
+
+            {/* 3. 코멘트 패널 */}
+            <CommentPanel
+              sessionId={session._id}
+              filePath={selectedFile}
+              activeLine={activeLine}
+              comments={comments}
+              onCommentChange={() => fetchComments(session._id)}
+            />
           </>
         ) : (
-          // 준비되지 않았을 때 (업로드 전/중)
           <div className="flex-1 p-8 overflow-y-auto">
             <div className="max-w-2xl mx-auto">
               <div className="mb-8 text-center">

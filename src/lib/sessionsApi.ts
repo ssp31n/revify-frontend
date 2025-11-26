@@ -15,6 +15,14 @@ export interface Session {
   expiresAt: string;
 }
 
+export interface FileNode {
+  path: string;
+  name: string;
+  isDirectory: boolean;
+  size: number;
+  language?: string;
+}
+
 export interface CreateSessionData {
   title: string;
   description?: string;
@@ -23,8 +31,6 @@ export interface CreateSessionData {
 }
 
 export const sessionsApi = {
-  // ... 기존 메서드들 (getSessions, createSession, deleteSession) 유지 ...
-
   getSessions: async (): Promise<Session[]> => {
     const response = await apiClient.get("/sessions");
     return response.data.data;
@@ -39,32 +45,43 @@ export const sessionsApi = {
     await apiClient.delete(`/sessions/${id}`);
   },
 
-  // --- 추가된 부분 ---
-
-  // 세션 상세 조회
   getSessionById: async (id: string): Promise<Session> => {
     const response = await apiClient.get(`/sessions/${id}`);
     return response.data.data;
   },
 
-  // 파일 업로드 (multipart/form-data)
   uploadFile: async (
     sessionId: string,
     file: File
   ): Promise<{ uploadId: string }> => {
     const formData = new FormData();
     formData.append("file", file);
-
-    // 중요: Content-Type을 직접 설정하지 않거나 undefined로 두어 브라우저가 boundary를 설정하게 함
     const response = await apiClient.post(
       `/sessions/${sessionId}/uploads`,
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       }
     );
     return response.data.data;
+  },
+
+  // --- 추가된 부분 ---
+
+  // 파일 트리 조회
+  getFileTree: async (sessionId: string): Promise<FileNode[]> => {
+    const response = await apiClient.get(`/sessions/${sessionId}/tree`);
+    return response.data.data;
+  },
+
+  // 파일 내용 조회
+  getFileContent: async (
+    sessionId: string,
+    filePath: string
+  ): Promise<string> => {
+    const response = await apiClient.get(`/sessions/${sessionId}/file`, {
+      params: { path: filePath },
+    });
+    return response.data.data.content;
   },
 };

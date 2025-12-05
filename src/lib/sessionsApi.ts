@@ -14,6 +14,7 @@ export interface Session {
   status: "created" | "uploading" | "ready" | "error";
   createdAt: string;
   expiresAt: string;
+  inviteToken?: string; // [추가됨]
 }
 
 export interface CreateSessionData {

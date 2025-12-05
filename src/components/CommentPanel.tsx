@@ -48,7 +48,6 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
   const handleSubmit = async (e: React.FormEvent, parentId?: string) => {
     e.preventDefault();
 
-    // 답글일 경우 activeLine이 없어도 부모 스레드 정보를 이용해야 함
     let targetStartLine = activeLine;
     let targetEndLine = activeLine;
 
@@ -59,7 +58,6 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
         targetEndLine = parentThread.endLine;
       }
     } else if (!activeLine) {
-      // 루트 코멘트인데 라인 선택이 안 되어 있으면 리턴
       return;
     }
 
@@ -110,13 +108,13 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-muted/10 border-l border-border w-80 shrink-0">
+    // [수정] w-96 고정 (너비 확장)
+    <div className="h-full flex flex-col bg-muted/10 border-l border-border w-96 shrink-0">
       <div className="p-3 border-b border-border font-semibold text-sm flex items-center gap-2 bg-background text-foreground">
         <MessageSquare className="h-4 w-4" /> Comments
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* 새 코멘트 작성 폼 */}
         {activeLine && (
           <div className="border border-primary/50 rounded-md bg-background p-3 shadow-sm">
             <div className="text-xs font-medium text-muted-foreground mb-2">
@@ -143,7 +141,6 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
           </div>
         )}
 
-        {/* 기존 코멘트 목록 */}
         {threads.length === 0 && !activeLine ? (
           <div className="text-center text-sm text-muted-foreground py-10">
             No comments on this file yet.

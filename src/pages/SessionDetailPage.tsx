@@ -1,17 +1,17 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom"; // useNavigate 추가
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { sessionsApi, Session, Comment } from "@/lib/sessionsApi";
-import { Loader2, ArrowLeft, Settings } from "lucide-react"; // Settings 아이콘 추가
+import { Loader2, ArrowLeft, Settings } from "lucide-react";
 import UploadPanel from "@/components/UploadPanel";
 import FileTree from "@/components/FileTree";
 import CodeViewer from "@/components/CodeViewer";
 import CommentPanel from "@/components/CommentPanel";
-import SessionSettingsModal from "@/components/SessionSettingsModal"; // 모달 추가
+import SessionSettingsModal from "@/components/SessionSettingsModal";
 import { useAuth } from "@/context/AuthContext";
 
 const SessionDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate(); // 삭제 후 이동을 위해 추가
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ const SessionDetailPage = () => {
   const [activeLine, setActiveLine] = useState<number | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
 
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // 모달 상태
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -60,14 +60,13 @@ const SessionDetailPage = () => {
     setActiveLine(line);
   }, []);
 
-  // 세션 삭제 시 목록으로 이동
   const handleSessionDeleted = () => {
     navigate("/sessions");
   };
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-[50vh]">
+      <div className="flex justify-center items-center h-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -82,55 +81,62 @@ const SessionDetailPage = () => {
   const isReady = session.status === "ready";
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
-      <div className="p-4 border-b shrink-0 bg-background z-10">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <Link
-              to="/sessions"
-              className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Link>
-            <span
-              className={`px-2 py-0.5 rounded text-xs font-bold border ${
-                session.status === "ready"
-                  ? "bg-green-500/10 text-green-500 border-green-500/20"
-                  : "bg-secondary text-secondary-foreground"
-              }`}
-            >
-              {session.status.toUpperCase()}
-            </span>
-            {/* 공개 범위 뱃지 추가 */}
-            <span className="px-2 py-0.5 rounded text-xs font-bold border bg-blue-500/10 text-blue-500 border-blue-500/20 capitalize">
-              {session.visibility}
-            </span>
-          </div>
+    // h-full로 변경하여 Layout의 flex-1 영역을 모두 채움 (스크롤 없음)
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* 헤더바: 높이 최소화, 좌우 패딩은 조금 여유 있게 */}
+      <div className="h-14 border-b border-border bg-background flex items-center justify-between px-4 shrink-0">
+        <div className="flex items-center gap-4 min-w-0">
+          <Link
+            to="/sessions"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+            title="Back to list"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
 
-          {/* 설정 버튼 (오너만 보임) */}
-          {isOwner && (
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
-              title="Session Settings"
-            >
-              <Settings className="h-5 w-5" />
-            </button>
-          )}
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-bold truncate max-w-md">
+                {session.title}
+              </h1>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border capitalize ${
+                  session.status === "ready"
+                    ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    : "bg-secondary text-secondary-foreground border-border"
+                }`}
+              >
+                {session.status}
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold border bg-blue-500/10 text-blue-500 border-blue-500/20 capitalize">
+                {session.visibility}
+              </span>
+            </div>
+          </div>
         </div>
-        <h1 className="text-xl font-bold truncate">{session.title}</h1>
-        <p className="text-sm text-muted-foreground mt-1 truncate">
-          {session.description}
-        </p>
+
+        {/* 우측 설정 버튼 */}
+        {isOwner && (
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+            title="Session Settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
-      <div className="flex-1 overflow-hidden flex">
+      {/* 메인 작업 영역: 3단 레이아웃 (트리 - 코드 - 코멘트) */}
+      <div className="flex-1 overflow-hidden flex flex-row">
         {isReady ? (
           <>
-            {/* 1. 파일 트리 */}
-            <div className="w-64 border-r border-border bg-muted/5 shrink-0 flex flex-col">
-              <div className="p-3 border-b border-border text-xs font-semibold text-muted-foreground">
-                FILES
+            {/* 1. 파일 트리: w-72로 확장 */}
+            <div className="w-72 border-r border-border bg-[#18181b] shrink-0 flex flex-col">
+              {" "}
+              {/* 더 어두운 배경 */}
+              <div className="px-4 py-3 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Explorer
               </div>
               <FileTree
                 sessionId={session._id}
@@ -142,8 +148,8 @@ const SessionDetailPage = () => {
               />
             </div>
 
-            {/* 2. 코드 뷰어 */}
-            <div className="flex-1 bg-background overflow-hidden min-w-0">
+            {/* 2. 코드 뷰어: 남은 공간 전체 (flex-1) */}
+            <div className="flex-1 bg-[#282c34] overflow-hidden min-w-0 relative flex flex-col">
               <CodeViewer
                 sessionId={session._id}
                 filePath={selectedFile}
@@ -151,7 +157,7 @@ const SessionDetailPage = () => {
               />
             </div>
 
-            {/* 3. 코멘트 패널 */}
+            {/* 3. 코멘트 패널: w-96으로 확장하여 가독성 확보 */}
             <CommentPanel
               sessionId={session._id}
               filePath={selectedFile}
@@ -161,21 +167,23 @@ const SessionDetailPage = () => {
             />
           </>
         ) : (
-          <div className="flex-1 p-8 overflow-y-auto">
-            <div className="max-w-2xl mx-auto">
-              <div className="mb-8 text-center">
+          <div className="flex-1 p-8 flex flex-col items-center justify-center bg-muted/5">
+            <div className="max-w-md w-full text-center space-y-6">
+              <div>
                 <h2 className="text-2xl font-bold mb-2">Setup Session</h2>
                 <p className="text-muted-foreground">
                   Upload your source code (ZIP) to start reviewing.
                 </p>
               </div>
               {isOwner ? (
-                <UploadPanel
-                  sessionId={session._id}
-                  onUploadComplete={handleUploadComplete}
-                />
+                <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
+                  <UploadPanel
+                    sessionId={session._id}
+                    onUploadComplete={handleUploadComplete}
+                  />
+                </div>
               ) : (
-                <div className="text-center text-muted-foreground">
+                <div className="p-8 border border-dashed border-border rounded-xl text-muted-foreground bg-muted/10">
                   Waiting for owner to upload code...
                 </div>
               )}
@@ -184,7 +192,6 @@ const SessionDetailPage = () => {
         )}
       </div>
 
-      {/* 설정 모달 */}
       {isOwner && (
         <SessionSettingsModal
           session={session}

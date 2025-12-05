@@ -12,8 +12,8 @@ const Navbar = () => {
   const { user, login, logout, isLoading } = useAuth();
 
   return (
-    <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-14 flex items-center px-4 md:px-6 sticky top-0 z-50">
-      <div className="flex items-center justify-between w-full max-w-7xl mx-auto">
+    <nav className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 h-14 flex items-center px-4 sticky top-0 z-50 w-full shrink-0">
+      <div className="flex items-center justify-between w-full">
         {/* 로고 및 메뉴 */}
         <div className="flex items-center gap-8">
           <Link
@@ -75,7 +75,8 @@ const Navbar = () => {
             </div>
           ) : (
             <button
-              onClick={login}
+              // [수정] 이벤트 객체가 전달되지 않도록 익명 함수로 감쌈
+              onClick={() => login()}
               className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 shadow-sm"
             >
               Sign in

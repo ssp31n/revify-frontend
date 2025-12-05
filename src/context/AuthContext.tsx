@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import apiClient from "@/lib/apiClient";
 
-// ... (인터페이스 정의는 기존과 동일) ...
 export interface User {
   _id: string;
   provider: string;
@@ -30,7 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkUser = async () => {
     try {
-      // [수정됨] 캐시 방지를 위해 timestamp 추가
+      // [수정] 캐시 방지를 위해 timestamp 쿼리 스트링 추가
+      // 브라우저가 401 응답을 캐싱하여 로그인 후에도 미로그인 상태로 인식하는 것을 방지
       const { data } = await apiClient.get(
         `/auth/me?_t=${new Date().getTime()}`
       );
@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(data.user);
       }
     } catch (error) {
+      // 401 에러 등은 로그인이 안 된 상태이므로 무시하고 user를 null로 유지
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -45,17 +46,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = () => {
-    // 환경변수 또는 하드코딩된 백엔드 URL 사용 (Nginx Proxy를 타므로 상대경로 /auth 도 가능하지만 명시적 URL 권장)
-    const backendUrl = import.meta.env.VITE_API_URL || "https://revify.my";
-    // 주의: 위 VITE_API_URL이 /api라면 /auth 경로는 별도로 처리해야 함.
-    // Nginx 설정상 /auth는 루트 레벨이므로, 도메인을 직접 쓰는 게 안전함.
-    window.location.href = `https://revify.my/auth/google`;
+    // [수정] 배포 환경과 로컬 환경에 따라 로그인 엔드포인트를 동적으로 결정
+    if (import.meta.env.PROD) {
+      // 배포 환경 (Docker/Nginx):
+      // 현재 브라우저의 도메인(예: https://www.revify.my)을 기준으로 요청하여
+      // 'www' 유무에 따른 uri mismatch를 방지하고 Nginx의 /auth 라우팅을 이용함
+      window.location.href = `${window.location.origin}/auth/google`;
+    } else {
+      // 로컬 개발 환경:
+      // 백엔드 포트(3000)로 직접 이동
+      const backendUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:3000";
+      window.location.href = `${backendUrl}/auth/google`;
+    }
   };
 
   const logout = async () => {
     try {
       await apiClient.post("/auth/logout");
       setUser(null);
+      // 로그아웃 후 홈으로 이동하거나 새로고침
       window.location.href = "/";
     } catch (error) {
       console.error("Logout failed", error);

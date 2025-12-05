@@ -1,15 +1,17 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom"; // useNavigate 추가
 import { sessionsApi, Session, Comment } from "@/lib/sessionsApi";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Settings } from "lucide-react"; // Settings 아이콘 추가
 import UploadPanel from "@/components/UploadPanel";
 import FileTree from "@/components/FileTree";
 import CodeViewer from "@/components/CodeViewer";
 import CommentPanel from "@/components/CommentPanel";
+import SessionSettingsModal from "@/components/SessionSettingsModal"; // 모달 추가
 import { useAuth } from "@/context/AuthContext";
 
 const SessionDetailPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate(); // 삭제 후 이동을 위해 추가
   const { user } = useAuth();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,8 @@ const SessionDetailPage = () => {
   const [activeLine, setActiveLine] = useState<number | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
 
-  // 초기 로드
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // 모달 상태
+
   useEffect(() => {
     if (id) {
       fetchSession(id);
@@ -53,10 +56,14 @@ const SessionDetailPage = () => {
     if (id) fetchSession(id);
   };
 
-  // 코드 뷰어에서 라인 클릭 시 호출
   const handleLineSelect = useCallback((line: number) => {
     setActiveLine(line);
   }, []);
+
+  // 세션 삭제 시 목록으로 이동
+  const handleSessionDeleted = () => {
+    navigate("/sessions");
+  };
 
   if (loading)
     return (
@@ -78,38 +85,58 @@ const SessionDetailPage = () => {
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       <div className="p-4 border-b shrink-0 bg-background z-10">
         <div className="flex items-center justify-between mb-2">
-          <Link
-            to="/sessions"
-            className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Link>
-          <span
-            className={`px-2 py-0.5 rounded text-xs font-bold border ${
-              session.status === "ready"
-                ? "bg-green-100 text-green-700 border-green-200"
-                : "bg-secondary text-secondary-foreground"
-            }`}
-          >
-            {session.status.toUpperCase()}
-          </span>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/sessions"
+              className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+            >
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Link>
+            <span
+              className={`px-2 py-0.5 rounded text-xs font-bold border ${
+                session.status === "ready"
+                  ? "bg-green-500/10 text-green-500 border-green-500/20"
+                  : "bg-secondary text-secondary-foreground"
+              }`}
+            >
+              {session.status.toUpperCase()}
+            </span>
+            {/* 공개 범위 뱃지 추가 */}
+            <span className="px-2 py-0.5 rounded text-xs font-bold border bg-blue-500/10 text-blue-500 border-blue-500/20 capitalize">
+              {session.visibility}
+            </span>
+          </div>
+
+          {/* 설정 버튼 (오너만 보임) */}
+          {isOwner && (
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-md transition-colors"
+              title="Session Settings"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+          )}
         </div>
         <h1 className="text-xl font-bold truncate">{session.title}</h1>
+        <p className="text-sm text-muted-foreground mt-1 truncate">
+          {session.description}
+        </p>
       </div>
 
       <div className="flex-1 overflow-hidden flex">
         {isReady ? (
           <>
             {/* 1. 파일 트리 */}
-            <div className="w-64 border-r bg-muted/10 shrink-0 flex flex-col">
-              <div className="p-3 border-b text-xs font-semibold text-muted-foreground">
+            <div className="w-64 border-r border-border bg-muted/5 shrink-0 flex flex-col">
+              <div className="p-3 border-b border-border text-xs font-semibold text-muted-foreground">
                 FILES
               </div>
               <FileTree
                 sessionId={session._id}
                 onFileSelect={(path) => {
                   setSelectedFile(path);
-                  setActiveLine(null); // 파일 변경 시 라인 선택 초기화
+                  setActiveLine(null);
                 }}
                 selectedPath={selectedFile}
               />
@@ -121,7 +148,6 @@ const SessionDetailPage = () => {
                 sessionId={session._id}
                 filePath={selectedFile}
                 onLineSelect={handleLineSelect}
-                comments={comments.filter((c) => c.filePath === selectedFile)}
               />
             </div>
 
@@ -157,6 +183,17 @@ const SessionDetailPage = () => {
           </div>
         )}
       </div>
+
+      {/* 설정 모달 */}
+      {isOwner && (
+        <SessionSettingsModal
+          session={session}
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onUpdate={(updated) => setSession(updated)}
+          onDelete={handleSessionDeleted}
+        />
+      )}
     </div>
   );
 };

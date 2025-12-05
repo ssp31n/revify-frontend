@@ -1,7 +1,6 @@
 import apiClient from "./apiClient";
 
-// ... 기존 인터페이스 (Session, FileNode, CreateSessionData) 유지 ...
-
+// ... (기존 인터페이스들: Session, FileNode, Comment 등 유지) ...
 export interface Session {
   _id: string;
   owner: {
@@ -17,14 +16,6 @@ export interface Session {
   expiresAt: string;
 }
 
-export interface FileNode {
-  path: string;
-  name: string;
-  isDirectory: boolean;
-  size: number;
-  language?: string;
-}
-
 export interface CreateSessionData {
   title: string;
   description?: string;
@@ -32,7 +23,6 @@ export interface CreateSessionData {
   commentPermission: "owner" | "invited" | "everyone";
 }
 
-// --- 추가된 인터페이스 ---
 export interface Comment {
   _id: string;
   session: string;
@@ -52,41 +42,57 @@ export interface Comment {
 }
 
 export const sessionsApi = {
-  // ... 기존 메서드들 유지 ...
   getSessions: async (): Promise<Session[]> => {
     const response = await apiClient.get("/sessions");
     return response.data.data;
   },
+
   createSession: async (data: CreateSessionData): Promise<Session> => {
     const response = await apiClient.post("/sessions", data);
     return response.data.data;
   },
+
   deleteSession: async (id: string): Promise<void> => {
     await apiClient.delete(`/sessions/${id}`);
   },
+
   getSessionById: async (id: string): Promise<Session> => {
     const response = await apiClient.get(`/sessions/${id}`);
     return response.data.data;
   },
+
+  // [추가됨] 세션 설정 수정 (공개 범위 등)
+  updateSessionSettings: async (
+    id: string,
+    data: Partial<CreateSessionData>
+  ): Promise<Session> => {
+    const response = await apiClient.patch(`/sessions/${id}/settings`, data);
+    return response.data.data;
+  },
+
   uploadFile: async (
     sessionId: string,
     file: File
   ): Promise<{ uploadId: string }> => {
     const formData = new FormData();
     formData.append("file", file);
+    // Content-Type: undefined로 설정하여 브라우저가 boundary 자동 생성하도록 함
     const response = await apiClient.post(
       `/sessions/${sessionId}/uploads`,
       formData,
       {
-        headers: { "Content-Type": undefined }, // 브라우저 자동 설정
+        headers: { "Content-Type": undefined },
       }
     );
     return response.data.data;
   },
-  getFileTree: async (sessionId: string): Promise<FileNode[]> => {
+
+  getFileTree: async (sessionId: string): Promise<any[]> => {
+    // FileNode[] 타입 사용 권장
     const response = await apiClient.get(`/sessions/${sessionId}/tree`);
     return response.data.data;
   },
+
   getFileContent: async (
     sessionId: string,
     filePath: string
@@ -97,7 +103,6 @@ export const sessionsApi = {
     return response.data.data.content;
   },
 
-  // --- 코멘트 관련 메서드 추가 ---
   getComments: async (sessionId: string): Promise<Comment[]> => {
     const response = await apiClient.get(`/sessions/${sessionId}/comments`);
     return response.data.data;

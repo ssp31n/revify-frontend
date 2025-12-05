@@ -18,7 +18,6 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
   comments,
   onCommentChange,
 }) => {
-  // 수정됨: useAuth 제거
   const [newComment, setNewComment] = useState("");
   const [replyContent, setReplyContent] = useState<{ [key: string]: string }>(
     {}
@@ -46,12 +45,23 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
       .sort((a, b) => a.startLine - b.startLine);
   }, [comments, filePath]);
 
-  // 수정됨: threadsOnActiveLine 변수 삭제 (사용 안 함)
-
   const handleSubmit = async (e: React.FormEvent, parentId?: string) => {
-    // ... (기존 코드 동일)
     e.preventDefault();
-    if (!filePath || !activeLine) return;
+
+    // 답글일 경우 activeLine이 없어도 부모 스레드 정보를 이용해야 함
+    let targetStartLine = activeLine;
+    let targetEndLine = activeLine;
+
+    if (parentId) {
+      const parentThread = threads.find((t) => t._id === parentId);
+      if (parentThread) {
+        targetStartLine = parentThread.startLine;
+        targetEndLine = parentThread.endLine;
+      }
+    } else if (!activeLine) {
+      // 루트 코멘트인데 라인 선택이 안 되어 있으면 리턴
+      return;
+    }
 
     const content = parentId ? replyContent[parentId] : newComment;
     if (!content?.trim()) return;
@@ -59,9 +69,9 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
     try {
       setLoading(true);
       await sessionsApi.createComment(sessionId, {
-        filePath,
-        startLine: activeLine,
-        endLine: activeLine,
+        filePath: filePath!,
+        startLine: targetStartLine!,
+        endLine: targetEndLine!,
         content,
         parentComment: parentId,
       });
@@ -81,7 +91,6 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
   };
 
   const handleResolve = async (commentId: string, currentStatus: boolean) => {
-    // ... (기존 코드 동일)
     try {
       await sessionsApi.updateComment(sessionId, commentId, {
         resolved: !currentStatus,
@@ -101,21 +110,21 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
   }
 
   return (
-    <div className="h-full flex flex-col bg-muted/10 border-l w-80 shrink-0">
-      <div className="p-3 border-b font-semibold text-sm flex items-center gap-2 bg-background">
+    <div className="h-full flex flex-col bg-muted/10 border-l border-border w-80 shrink-0">
+      <div className="p-3 border-b border-border font-semibold text-sm flex items-center gap-2 bg-background text-foreground">
         <MessageSquare className="h-4 w-4" /> Comments
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* 새 코멘트 작성 폼 */}
         {activeLine && (
-          <div className="border rounded-md bg-background p-3 shadow-sm border-primary/50">
+          <div className="border border-primary/50 rounded-md bg-background p-3 shadow-sm">
             <div className="text-xs font-medium text-muted-foreground mb-2">
               New comment on line {activeLine}
             </div>
             <form onSubmit={(e) => handleSubmit(e)}>
               <textarea
-                className="w-full text-sm p-2 border rounded resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full text-sm p-2 border border-input rounded resize-none focus:outline-none focus:ring-1 focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                 rows={3}
                 placeholder="Write a comment..."
                 value={newComment}
@@ -144,16 +153,16 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
             <div
               key={thread._id}
               className={cn(
-                "border rounded-md bg-background shadow-sm transition-colors",
+                "border border-border rounded-md bg-background shadow-sm transition-colors",
                 thread.resolved && "opacity-60"
               )}
             >
-              <div className="p-3 border-b bg-muted/20 flex justify-between items-start">
+              <div className="p-3 border-b border-border bg-muted/20 flex justify-between items-start">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px]">
+                  <span className="font-mono bg-muted text-foreground px-1.5 py-0.5 rounded text-[10px]">
                     L{thread.startLine}
                   </span>
-                  <span className="font-semibold">
+                  <span className="font-semibold text-foreground">
                     {thread.author.displayName}
                   </span>
                   <span className="text-muted-foreground text-[10px]">
@@ -174,25 +183,25 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
                 </button>
               </div>
 
-              <div className="p-3 text-sm whitespace-pre-wrap">
+              <div className="p-3 text-sm whitespace-pre-wrap text-foreground">
                 {thread.content}
               </div>
 
               {thread.replies.length > 0 && (
-                <div className="bg-muted/5 p-2 space-y-2 border-t">
+                <div className="bg-muted/5 p-2 space-y-2 border-t border-border">
                   {thread.replies.map((reply) => (
                     <div key={reply._id} className="flex gap-2 text-sm">
                       <CornerDownRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
-                      <div className="flex-1 bg-background border rounded p-2">
+                      <div className="flex-1 bg-background border border-border rounded p-2">
                         <div className="flex justify-between items-baseline mb-1">
-                          <span className="font-semibold text-xs">
+                          <span className="font-semibold text-xs text-foreground">
                             {reply.author.displayName}
                           </span>
                           <span className="text-[10px] text-muted-foreground">
                             {new Date(reply.createdAt).toLocaleDateString()}
                           </span>
                         </div>
-                        <p>{reply.content}</p>
+                        <p className="text-foreground">{reply.content}</p>
                       </div>
                     </div>
                   ))}
@@ -200,13 +209,13 @@ const CommentPanel: React.FC<CommentPanelProps> = ({
               )}
 
               {!thread.resolved && (
-                <div className="p-2 border-t bg-muted/10">
+                <div className="p-2 border-t border-border bg-muted/10">
                   {replyingTo === thread._id ? (
                     <form onSubmit={(e) => handleSubmit(e, thread._id)}>
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          className="flex-1 text-sm border rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary"
+                          className="flex-1 text-sm border border-input rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary bg-background text-foreground placeholder:text-muted-foreground"
                           placeholder="Reply..."
                           autoFocus
                           value={replyContent[thread._id] || ""}

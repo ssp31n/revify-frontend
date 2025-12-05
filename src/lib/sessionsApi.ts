@@ -1,6 +1,14 @@
 import apiClient from "./apiClient";
 
-// ... (기존 인터페이스들: Session, FileNode, Comment 등 유지) ...
+// [중요] FileNode 인터페이스 정의 및 Export
+export interface FileNode {
+  path: string;
+  name: string;
+  isDirectory: boolean;
+  size: number;
+  language?: string;
+}
+
 export interface Session {
   _id: string;
   owner: {
@@ -14,7 +22,7 @@ export interface Session {
   status: "created" | "uploading" | "ready" | "error";
   createdAt: string;
   expiresAt: string;
-  inviteToken?: string; // [추가됨]
+  inviteToken?: string;
 }
 
 export interface CreateSessionData {
@@ -43,26 +51,30 @@ export interface Comment {
 }
 
 export const sessionsApi = {
+  // 세션 목록 조회
   getSessions: async (): Promise<Session[]> => {
     const response = await apiClient.get("/sessions");
     return response.data.data;
   },
 
+  // 세션 생성
   createSession: async (data: CreateSessionData): Promise<Session> => {
     const response = await apiClient.post("/sessions", data);
     return response.data.data;
   },
 
+  // 세션 삭제
   deleteSession: async (id: string): Promise<void> => {
     await apiClient.delete(`/sessions/${id}`);
   },
 
+  // 세션 상세 조회
   getSessionById: async (id: string): Promise<Session> => {
     const response = await apiClient.get(`/sessions/${id}`);
     return response.data.data;
   },
 
-  // [추가됨] 세션 설정 수정 (공개 범위 등)
+  // 세션 설정 수정
   updateSessionSettings: async (
     id: string,
     data: Partial<CreateSessionData>
@@ -71,13 +83,13 @@ export const sessionsApi = {
     return response.data.data;
   },
 
+  // 파일 업로드
   uploadFile: async (
     sessionId: string,
     file: File
   ): Promise<{ uploadId: string }> => {
     const formData = new FormData();
     formData.append("file", file);
-    // Content-Type: undefined로 설정하여 브라우저가 boundary 자동 생성하도록 함
     const response = await apiClient.post(
       `/sessions/${sessionId}/uploads`,
       formData,
@@ -88,12 +100,13 @@ export const sessionsApi = {
     return response.data.data;
   },
 
-  getFileTree: async (sessionId: string): Promise<any[]> => {
-    // FileNode[] 타입 사용 권장
+  // 파일 트리 조회
+  getFileTree: async (sessionId: string): Promise<FileNode[]> => {
     const response = await apiClient.get(`/sessions/${sessionId}/tree`);
     return response.data.data;
   },
 
+  // 파일 내용 조회
   getFileContent: async (
     sessionId: string,
     filePath: string
@@ -104,11 +117,13 @@ export const sessionsApi = {
     return response.data.data.content;
   },
 
+  // 코멘트 목록 조회
   getComments: async (sessionId: string): Promise<Comment[]> => {
     const response = await apiClient.get(`/sessions/${sessionId}/comments`);
     return response.data.data;
   },
 
+  // 코멘트 생성
   createComment: async (
     sessionId: string,
     data: {
@@ -126,6 +141,7 @@ export const sessionsApi = {
     return response.data.data;
   },
 
+  // 코멘트 수정/해결
   updateComment: async (
     sessionId: string,
     commentId: string,
@@ -138,13 +154,13 @@ export const sessionsApi = {
     return response.data.data;
   },
 
-  // [추가] 초대 토큰 조회
+  // 초대 토큰 조회
   getInviteToken: async (sessionId: string): Promise<string | null> => {
     const response = await apiClient.get(`/sessions/${sessionId}/invite-token`);
     return response.data.data.inviteToken;
   },
 
-  // [추가] 초대 토큰 생성/갱신
+  // 초대 토큰 생성/갱신
   refreshInviteToken: async (sessionId: string): Promise<string> => {
     const response = await apiClient.post(
       `/sessions/${sessionId}/invite-token`
@@ -152,7 +168,7 @@ export const sessionsApi = {
     return response.data.data.inviteToken;
   },
 
-  // [추가] 초대 수락 (세션 참여)
+  // 초대 수락 (세션 참여)
   joinSession: async (token: string): Promise<{ sessionId: string }> => {
     const response = await apiClient.post(`/sessions/join/${token}`);
     return response.data.data;

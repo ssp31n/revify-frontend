@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import apiClient from "@/lib/apiClient";
 
+// ... (인터페이스 등 기존 코드 유지) ...
 export interface User {
   _id: string;
   provider: string;
@@ -29,8 +30,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkUser = async () => {
     try {
-      // [수정] 캐시 방지를 위해 timestamp 쿼리 스트링 추가
-      // 브라우저가 401 응답을 캐싱하여 로그인 후에도 미로그인 상태로 인식하는 것을 방지
       const { data } = await apiClient.get(
         `/auth/me?_t=${new Date().getTime()}`
       );
@@ -38,7 +37,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(data.user);
       }
     } catch (error) {
-      // 401 에러 등은 로그인이 안 된 상태이므로 무시하고 user를 null로 유지
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -46,26 +44,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = () => {
-    // [수정] 배포 환경과 로컬 환경에 따라 로그인 엔드포인트를 동적으로 결정
-    if (import.meta.env.PROD) {
-      // 배포 환경 (Docker/Nginx):
-      // 현재 브라우저의 도메인(예: https://www.revify.my)을 기준으로 요청하여
-      // 'www' 유무에 따른 uri mismatch를 방지하고 Nginx의 /auth 라우팅을 이용함
-      window.location.href = `${window.location.origin}/auth/google`;
-    } else {
-      // 로컬 개발 환경:
-      // 백엔드 포트(3000)로 직접 이동
-      const backendUrl =
-        import.meta.env.VITE_API_URL || "http://localhost:3000";
-      window.location.href = `${backendUrl}/auth/google`;
-    }
+    // [수정됨] 로컬/배포 모두 현재 오리진을 기준으로 요청 (Vite Proxy 또는 Nginx Proxy 활용)
+    // 로컬: http://localhost:5173/auth/google -> (Vite Proxy) -> http://localhost:3000/auth/google
+    // 배포: https://revify.my/auth/google -> (Nginx Proxy) -> 백엔드 컨테이너
+    window.location.href = `${window.location.origin}/auth/google`;
   };
 
   const logout = async () => {
     try {
       await apiClient.post("/auth/logout");
       setUser(null);
-      // 로그아웃 후 홈으로 이동하거나 새로고침
       window.location.href = "/";
     } catch (error) {
       console.error("Logout failed", error);

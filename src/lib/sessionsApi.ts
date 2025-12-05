@@ -136,4 +136,24 @@ export const sessionsApi = {
     );
     return response.data.data;
   },
+
+  // [추가] 초대 토큰 조회
+  getInviteToken: async (sessionId: string): Promise<string | null> => {
+    const response = await apiClient.get(`/sessions/${sessionId}/invite-token`);
+    return response.data.data.inviteToken;
+  },
+
+  // [추가] 초대 토큰 생성/갱신
+  refreshInviteToken: async (sessionId: string): Promise<string> => {
+    const response = await apiClient.post(
+      `/sessions/${sessionId}/invite-token`
+    );
+    return response.data.data.inviteToken;
+  },
+
+  // [추가] 초대 수락 (세션 참여)
+  joinSession: async (token: string): Promise<{ sessionId: string }> => {
+    const response = await apiClient.post(`/sessions/join/${token}`);
+    return response.data.data;
+  },
 };

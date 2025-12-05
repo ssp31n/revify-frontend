@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import apiClient from "@/lib/apiClient";
 
-// ... (인터페이스 등 기존 코드 유지) ...
 export interface User {
   _id: string;
   provider: string;
@@ -14,7 +13,8 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: () => void;
+  // [수정] returnPath 인자 추가 (선택적)
+  login: (returnPath?: string) => void;
   logout: () => Promise<void>;
 }
 
@@ -43,11 +43,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = () => {
-    // [수정됨] 로컬/배포 모두 현재 오리진을 기준으로 요청 (Vite Proxy 또는 Nginx Proxy 활용)
-    // 로컬: http://localhost:5173/auth/google -> (Vite Proxy) -> http://localhost:3000/auth/google
-    // 배포: https://revify.my/auth/google -> (Nginx Proxy) -> 백엔드 컨테이너
-    window.location.href = `${window.location.origin}/auth/google`;
+  // [수정] 로그인 함수: returnPath가 있으면 쿼리 파라미터로 전달
+  const login = (returnPath?: string) => {
+    let authUrl = "";
+
+    if (import.meta.env.PROD) {
+      authUrl = `${window.location.origin}/auth/google`;
+    } else {
+      const backendUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:3000";
+      authUrl = `${backendUrl}/auth/google`;
+    }
+
+    // 돌아올 경로가 있다면 쿼리 스트링에 추가
+    if (returnPath) {
+      authUrl += `?returnTo=${encodeURIComponent(returnPath)}`;
+    }
+
+    window.location.href = authUrl;
   };
 
   const logout = async () => {

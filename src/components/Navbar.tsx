@@ -23,15 +23,11 @@ const Navbar = () => {
             <div className="bg-primary/20 p-1.5 rounded-md">
               <Code2 className="h-5 w-5 text-primary" />
             </div>
-            <span className="font-mono">Revify</span>
+            {/* [수정] Revify -> revify (소문자 변경) */}
+            <span className="font-mono">revify</span>
           </Link>
           <div className="hidden md:flex gap-6 text-sm font-medium text-muted-foreground">
-            <Link
-              to="/"
-              className="hover:text-foreground transition-colors flex items-center gap-1.5"
-            >
-              Dashboard
-            </Link>
+            {/* [삭제] Dashboard 링크 제거됨 */}
             <Link
               to="/sessions"
               className="hover:text-foreground transition-colors flex items-center gap-1.5"
@@ -75,7 +71,6 @@ const Navbar = () => {
             </div>
           ) : (
             <button
-              // [수정] 이벤트 객체가 전달되지 않도록 익명 함수로 감쌈
               onClick={() => login()}
               className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-4 py-2 shadow-sm"
             >

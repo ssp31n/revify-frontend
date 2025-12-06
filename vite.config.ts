@@ -23,6 +23,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          // 에디터/차트처럼 무거운 라이브러리 있으면 여기에 따로 빼기
+          // editor: ["monaco-editor"],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: "jsdom",

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { sessionsApi, Session } from "@/lib/sessionsApi";
 // [수정] Copy 제거
 import {
@@ -171,6 +171,8 @@ const SessionsPage = () => {
   });
   const [editingSession, setEditingSession] = useState<Session | null>(null);
 
+  const navigate = useNavigate(); // 2. 훅 초기화
+
   useEffect(() => {
     fetchSessions();
   }, []);
@@ -197,8 +199,9 @@ const SessionsPage = () => {
         ...formData,
         commentPermission: "everyone",
       });
-      setSessions([newSession, ...sessions]);
-      setFormData({ title: "", description: "", visibility: "link" });
+      // setSessions([newSession, ...sessions]);
+      // setFormData({ title: "", description: "", visibility: "link" });
+      navigate(`/sessions/${newSession._id}`);
     } catch (err) {
       console.error(err);
       alert("Failed to create session");

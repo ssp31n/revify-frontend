@@ -19,5 +19,5 @@ jobs:
             cd ~/revify/front
             git pull origin main
             cd ~/revify
-            docker compose up -d --build Frontend
+            docker compose up -d --build frontend
             docker image prune -f

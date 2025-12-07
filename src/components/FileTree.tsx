@@ -9,18 +9,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface FileTreeProps {
+// [누락되었던 부분] 인터페이스 정의
+export interface FileTreeProps {
   sessionId: string;
   onFileSelect: (path: string) => void;
   selectedPath: string | null;
 }
 
-// 트리 구조를 위한 내부 타입
 interface TreeNode extends FileNode {
   children?: TreeNode[];
 }
 
-// Flat List -> Tree 구조 변환 함수
+// [누락되었던 부분] 트리 변환 함수
 const buildTree = (files: FileNode[]): TreeNode[] => {
   const root: TreeNode[] = [];
   const map: Record<string, TreeNode> = {};
@@ -38,7 +38,6 @@ const buildTree = (files: FileNode[]): TreeNode[] => {
       if (map[parentPath]) {
         map[parentPath].children?.push(map[file.path]);
       } else {
-        // 부모 디렉토리가 리스트에 없을 경우 (예외 처리) 루트에 넣음
         root.push(map[file.path]);
       }
     }
@@ -47,7 +46,7 @@ const buildTree = (files: FileNode[]): TreeNode[] => {
   return root;
 };
 
-// 재귀적 트리 아이템 컴포넌트
+// 트리 아이템 컴포넌트
 const TreeItem = ({
   node,
   depth,
@@ -62,7 +61,7 @@ const TreeItem = ({
   const [isOpen, setIsOpen] = useState(false);
 
   const isSelected = selectedPath === node.path;
-  const indent = depth * 12 + 12; // 들여쓰기 계산
+  const indent = depth * 12 + 12;
 
   const handleClick = () => {
     if (node.isDirectory) {
@@ -90,7 +89,7 @@ const TreeItem = ({
               <ChevronRight className="h-4 w-4" />
             )
           ) : (
-            <div className="w-4" /> // 아이콘 공간 확보
+            <div className="w-4" />
           )}
         </span>
         <span className="mr-2 text-muted-foreground">
@@ -119,6 +118,7 @@ const TreeItem = ({
   );
 };
 
+// 메인 컴포넌트
 const FileTree: React.FC<FileTreeProps> = ({
   sessionId,
   onFileSelect,
@@ -146,29 +146,35 @@ const FileTree: React.FC<FileTreeProps> = ({
 
   const treeData = useMemo(() => buildTree(files), [files]);
 
-  if (loading)
-    return (
-      <div className="p-4">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  if (error) return <div className="p-4 text-destructive text-sm">{error}</div>;
-  if (files.length === 0)
-    return (
-      <div className="p-4 text-muted-foreground text-sm">No files found.</div>
-    );
-
   return (
-    <div className="h-full overflow-y-auto py-2">
-      {treeData.map((node) => (
-        <TreeItem
-          key={node.path}
-          node={node}
-          depth={0}
-          onSelect={onFileSelect}
-          selectedPath={selectedPath}
-        />
-      ))}
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background">
+      <div className="flex-1 overflow-y-auto min-h-0 py-2">
+        {loading && (
+          <div className="flex h-full items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        )}
+
+        {error && <div className="p-4 text-sm text-destructive">{error}</div>}
+
+        {!loading && !error && files.length === 0 && (
+          <div className="p-4 text-sm text-muted-foreground">
+            No files found.
+          </div>
+        )}
+
+        {!loading &&
+          !error &&
+          treeData.map((node) => (
+            <TreeItem
+              key={node.path}
+              node={node}
+              depth={0}
+              onSelect={onFileSelect}
+              selectedPath={selectedPath}
+            />
+          ))}
+      </div>
     </div>
   );
 };

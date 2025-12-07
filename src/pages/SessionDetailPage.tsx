@@ -66,7 +66,7 @@ const SessionDetailPage = () => {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center h-full">
+      <div className="flex justify-center items-center h-[calc(100vh-4rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -81,10 +81,12 @@ const SessionDetailPage = () => {
   const isReady = session.status === "ready";
 
   return (
-    // h-full로 변경하여 Layout의 flex-1 영역을 모두 채움 (스크롤 없음)
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* 헤더바: 높이 최소화, 좌우 패딩은 조금 여유 있게 */}
-      <div className="h-14 border-b border-border bg-background flex items-center justify-between px-4 shrink-0">
+    // [핵심 수정] h-full 대신 h-[calc(100vh-4rem)]을 사용하여 화면 높이를 강제합니다.
+    // 만약 Layout 헤더 높이가 다르다면 4rem(64px) 부분을 조정하세요.
+    // overflow-hidden을 주어 이 영역 밖으로 스크롤이 생기지 않게 막습니다.
+    <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden bg-background">
+      {/* 헤더바 */}
+      <div className="h-14 border-b border-border bg-background flex items-center justify-between px-4 shrink-0 z-10">
         <div className="flex items-center gap-4 min-w-0">
           <Link
             to="/sessions"
@@ -115,7 +117,6 @@ const SessionDetailPage = () => {
           </div>
         </div>
 
-        {/* 우측 설정 버튼 */}
         {isOwner && (
           <button
             onClick={() => setIsSettingsOpen(true)}
@@ -127,29 +128,31 @@ const SessionDetailPage = () => {
         )}
       </div>
 
-      {/* 메인 작업 영역: 3단 레이아웃 (트리 - 코드 - 코멘트) */}
-      <div className="flex-1 overflow-hidden flex flex-row">
+      {/* 메인 작업 영역 */}
+      <div className="flex-1 flex overflow-hidden w-full">
         {isReady ? (
           <>
-            {/* 1. 파일 트리: w-72로 확장 */}
-            <div className="w-72 border-r border-border bg-[#18181b] shrink-0 flex flex-col">
-              {" "}
-              {/* 더 어두운 배경 */}
-              <div className="px-4 py-3 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            {/* 1. 파일 트리 (Sidebar) */}
+            <div className="w-72 border-r border-border bg-[#18181b] shrink-0 flex flex-col h-full">
+              <div className="px-4 py-3 border-b border-border text-xs font-bold text-muted-foreground uppercase tracking-wider shrink-0">
                 Explorer
               </div>
-              <FileTree
-                sessionId={session._id}
-                onFileSelect={(path) => {
-                  setSelectedFile(path);
-                  setActiveLine(null);
-                }}
-                selectedPath={selectedFile}
-              />
+
+              {/* FileTree를 감싸는 div를 flex-1로 채우고 min-h-0을 줍니다 */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <FileTree
+                  sessionId={session._id}
+                  onFileSelect={(path) => {
+                    setSelectedFile(path);
+                    setActiveLine(null);
+                  }}
+                  selectedPath={selectedFile}
+                />
+              </div>
             </div>
 
-            {/* 2. 코드 뷰어: 남은 공간 전체 (flex-1) */}
-            <div className="flex-1 bg-[#282c34] overflow-hidden min-w-0 relative flex flex-col">
+            {/* 2. 코드 뷰어 영역 */}
+            <div className="flex-1 bg-[#282c34] flex flex-col min-w-0 overflow-hidden relative h-full">
               <CodeViewer
                 sessionId={session._id}
                 filePath={selectedFile}
@@ -157,17 +160,19 @@ const SessionDetailPage = () => {
               />
             </div>
 
-            {/* 3. 코멘트 패널: w-96으로 확장하여 가독성 확보 */}
-            <CommentPanel
-              sessionId={session._id}
-              filePath={selectedFile}
-              activeLine={activeLine}
-              comments={comments}
-              onCommentChange={() => fetchComments(session._id)}
-            />
+            {/* 3. 코멘트 패널 */}
+            <div className="h-full flex flex-col">
+              <CommentPanel
+                sessionId={session._id}
+                filePath={selectedFile}
+                activeLine={activeLine}
+                comments={comments}
+                onCommentChange={() => fetchComments(session._id)}
+              />
+            </div>
           </>
         ) : (
-          <div className="flex-1 p-8 flex flex-col items-center justify-center bg-muted/5">
+          <div className="flex-1 p-8 flex flex-col items-center justify-center bg-muted/5 overflow-y-auto">
             <div className="max-w-md w-full text-center space-y-6">
               <div>
                 <h2 className="text-2xl font-bold mb-2">Setup Session</h2>
